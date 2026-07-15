@@ -1,0 +1,16 @@
+.venv/
+.env
+.env.*
+!.env.example
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*:Zone.Identifier
+service-account*.json
+*-service-account.json
