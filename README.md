@@ -5,7 +5,7 @@ four A2A servers use Vertex AI models in your Google Cloud project:
 
 | Server | Port | Model/service |
 | --- | ---: | --- |
-| Insurance policy agent | 9999 | Anthropic Claude Haiku 4.5 on Vertex AI |
+| Insurance policy agent | 9999 | Gemini 2.5 Flash Lite on Vertex AI by default, optionally Anthropic Claude Haiku 4.5 |
 | Health research agent | 9998 | Gemini 2.5 Flash with Google Search |
 | Healthcare provider agent | 9997 | OpenAI gpt-oss 20B MaaS plus local MCP data |
 | Healthcare orchestrator | 9996 | Gemini 2.5 Flash plus A2A handoffs |
@@ -79,15 +79,18 @@ You can skip these commands when the account already has equivalent permissions
 In [Model Garden](https://console.cloud.google.com/vertex-ai/model-garden), with
 your project selected:
 
-1. Open **Claude Haiku 4.5**, click **Enable**, and accept Anthropic's terms.
-2. Open **OpenAI gpt-oss 20B** with **API Service / MaaS**, click **Enable**, and
+1. Open **OpenAI gpt-oss 20B** with **API Service / MaaS**, click **Enable**, and
    accept any presented terms.
+2. Optional: open **Claude Haiku 4.5**, click **Enable**, and accept Anthropic's
+   terms if you want to run the policy agent with `POLICY_AGENT_BACKEND=anthropic`.
 
+The policy agent defaults to the Google model `gemini-2.5-flash-lite` through
+Vertex AI, which avoids Claude partner-model quota while you wait for approval.
 The configured Claude ID is `claude-haiku-4-5@20251001` and supports the global
 endpoint. The configured gpt-oss ID is `gpt-oss-20b-maas` (the request namespace
-is `openai/gpt-oss-20b-maas`) and is available in `us-central1`. Model names and
-locations are environment variables so they can be changed if availability in
-your account differs.
+is `openai/gpt-oss-20b-maas`) and is available in `us-central1`. Model names,
+locations, and the policy backend are environment variables so they can be
+changed if availability in your account differs.
 
 ## 2. Authenticate this local application
 
@@ -156,42 +159,48 @@ when the corresponding server makes its first request.
 
 ## 4. Run the demo
 
-Open four terminals in the repository root and start the dependent agents first:
+Start all four agents from one terminal with the foreground supervisor:
 
 ```bash
-# Terminal 1
-uv run python a2a_policy_agent.py
+uv run python -m healthcare_cli stack up
 ```
+
+It starts the policy, research, and provider agents in parallel, waits for their
+A2A Agent Cards, and then starts the healthcare orchestrator. Logs are prefixed
+with the agent name. Press `Ctrl+C` to stop the complete stack cleanly.
+
+In a second terminal, check the stack or open an interactive conversation:
 
 ```bash
-# Terminal 2
-uv run python a2a_research_agent.py
+uv run python -m healthcare_cli check
+uv run python -m healthcare_cli chat
 ```
+
+The chat retains the A2A conversation context between prompts. Use `:clear` to
+start a new conversation, `:help` for help, and `:quit` to exit. It displays
+sanitized progress events such as specialist handoffs but never model reasoning
+or tool payloads.
+
+For a one-shot request or machine-readable result:
 
 ```bash
-# Terminal 3
-uv run python a2a_provider_agent.py
+uv run python -m healthcare_cli chat "What does my policy cover?"
+uv run python -m healthcare_cli chat --json "Find a doctor in Boston, MA"
 ```
 
-After all three report that they are listening, start the orchestrator:
+The backward-compatible `scripts/query_healthcare_agent.py` command still sends
+one prompt. You can also start the four root-level agent scripts manually or use
+the final client cell in `L10/L10.ipynb`.
+
+## 5. Run tests
+
+The tests use pytest and do not make model calls:
 
 ```bash
-# Terminal 4
-uv run python a2a_healthcare_agent.py
+uv run pytest
 ```
 
-The orchestrator is available at `http://127.0.0.1:9996`. Query it from a fifth
-terminal:
-
-```bash
-uv run python scripts/query_healthcare_agent.py
-```
-
-You can pass a custom question as one quoted argument. Alternatively, use the
-final client cell in `L10/L10.ipynb`; execute only its client/interaction cells
-after the root-level servers have started.
-
-## 5. Run the lesson notebooks
+## 6. Run the lesson notebooks
 
 The notebooks in `L3` through `L10` are lesson material, so run them after the
 local environment is configured and dependencies are installed:
@@ -224,8 +233,10 @@ refactored root-level files.
   `roles/serviceusage.serviceUsageConsumer`.
 - **`aiplatform.endpoints.predict` denied:** grant `roles/aiplatform.user` to the
   identity shown by `gcloud auth application-default login`.
-- **Model not found / permission denied for Claude or gpt-oss:** enable that exact
-  model in Model Garden, accept its terms, and keep the model's supported
+- **Policy agent Claude quota exceeded:** leave `POLICY_AGENT_BACKEND=google` in
+  `.env`. Switch it to `anthropic` only after your Claude quota is approved.
+- **Model not found / permission denied for Claude or gpt-oss:** enable that
+  exact model in Model Garden, accept its terms, and keep the model's supported
   location from `.env.example`.
 - **Port already in use:** change the matching port in `.env`. All clients read
   the same values.
