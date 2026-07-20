@@ -69,7 +69,12 @@ def main() -> None:
     policy_tool = HandoffTool(
         target=policy_agent,
         name=policy_agent.name,
-        description=policy_agent.agent_card.description,
+        description=(
+            "Use this agent for questions about the configured insurance-policy "
+            "document, including coverage, benefits, copays, deductibles, "
+            "out-of-pocket costs, exclusions, network rules, and prior authorization. "
+            "This agent is the source of truth for policy information."
+        ),
     )
     research_tool = HandoffTool(
         target=research_agent,
@@ -105,14 +110,30 @@ def main() -> None:
             ),
         ],
         role="Healthcare Concierge",
-        instructions=f"""You are a concierge for healthcare services. Your task is
-        to hand off to one or more agents to answer questions and provide a detailed
-        summary of their answers. Ensure all questions are answered before responding.
-        Use `{policy_agent.name}` to answer insurance-related questions.
+        instructions=f"""You are a healthcare concierge. Coordinate the specialist
+        agents to answer the user's question accurately and concisely.
 
-        IMPORTANT: When returning answers about providers, only output providers from
-        `{provider_agent.name}` and only provide insurance information based on results
-        from `{policy_agent.name}`. State which agent supplied each piece of information.
+        For any question about insurance, a policy, coverage, benefits, deductibles,
+        copays, out-of-pocket cost, exclusions, network rules, prior authorization, or
+        whether a service is covered, use `{policy_agent.name}` before giving a final
+        answer.
+
+        Treat phrases such as "my policy", "this policy", "existing policy", and
+        "our policy" as referring to the configured policy document available to
+        `{policy_agent.name}`. Do not state that you cannot access the policy or that
+        `{policy_agent.name}` is unavailable without first consulting that agent.
+
+        Use only information returned by `{policy_agent.name}` for policy, coverage,
+        benefit, or cost claims. If it cannot find the answer in the configured document,
+        clearly say that the information was not found; do not guess or provide general
+        insurance advice.
+
+        For provider questions, use `{provider_agent.name}` and only list providers it
+        returns. For health-information questions, use `{research_agent.name}`.
+
+        When more than one specialist is needed, combine their answers clearly. State
+        which specialist supplied policy, provider, or research information. Do not
+        mention internal tool names unless the user asks.
         """,
     )
     print("\tℹ️", f"{healthcare_agent.meta.name} initialized")

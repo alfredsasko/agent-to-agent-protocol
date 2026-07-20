@@ -16,6 +16,7 @@ dependencies = [
     "langgraph==1.0.2",
     "langchain[openai]==1.0.2",
     "google-auth==2.42.0",
+    "google-genai==1.47.0",
     "python-dotenv==1.2.1",
     "beeai-framework[a2a,vertexai]==0.1.70",
     "nest-asyncio==1.6.0",
@@ -147,3 +148,13 @@ docstring-code-format = true
 docstring-code-line-length = "dynamic"
 quote-style = "double"
 indent-style = "space"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+pythonpath = ["."]
+testpaths = ["tests"]
